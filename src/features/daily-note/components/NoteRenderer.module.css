@@ -1,0 +1,159 @@
+.note {
+  display: flex;
+  flex-direction: column;
+}
+
+.emptyNote {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: var(--space-2) 0 var(--space-3);
+}
+
+.preamble {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+  line-height: 1.6;
+}
+
+/* ── Section ── */
+.section {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-2) 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  gap: var(--space-2);
+}
+
+.headingText {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin: 0;
+}
+
+/* Map heading levels to sizes */
+.section[data-level="1"] .headingText { font-size: 16px; }
+.section[data-level="2"] .headingText { font-size: 14px; font-weight: 600; }
+.section[data-level="3"] .headingText { font-size: 13px; font-weight: 600; }
+.section[data-level="4"] .headingText,
+.section[data-level="5"] .headingText,
+.section[data-level="6"] .headingText { font-size: 12px; }
+
+.chevron {
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* ── Section content ── */
+.content {
+  padding-bottom: var(--space-3);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.content p {
+  margin: 0 0 var(--space-2);
+}
+
+.content p:last-child {
+  margin-bottom: 0;
+}
+
+.content ul,
+.content ol {
+  padding-left: var(--space-4);
+  margin: 0 0 var(--space-2);
+}
+
+.content li {
+  margin-bottom: var(--space-1);
+}
+
+/* Task list items */
+.content li input[type="checkbox"] {
+  margin-right: var(--space-2);
+  accent-color: var(--accent);
+}
+
+.content li:has(input[type="checkbox"]) {
+  transition: color 0.25s var(--ease);
+}
+
+.content li:has(input[type="checkbox"]:checked) {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted);
+}
+
+/* Links */
+.content a[data-link-kind] {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: text-decoration-color var(--duration-fast) var(--ease);
+}
+
+.content a[data-link-kind]:hover {
+  text-decoration-color: var(--accent);
+}
+
+.content a[data-link-kind]:focus-visible {
+  outline: 1px solid color-mix(in srgb, var(--accent) 55%, white);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Inline elements */
+.content strong { color: var(--text-primary); }
+.content em { font-style: italic; }
+.content code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-solid);
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+}
+
+/* Obsidian-specific */
+.content :global(.tag) {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-solid);
+  padding: 1px 5px;
+  border-radius: 10px;
+}
+
+/* Blockquote */
+.content blockquote {
+  border-left: 2px solid var(--accent-soft);
+  margin: 0 0 var(--space-2);
+  padding-left: var(--space-3);
+  color: var(--text-muted);
+  font-style: italic;
+}

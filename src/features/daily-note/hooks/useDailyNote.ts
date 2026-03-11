@@ -125,12 +125,23 @@ export function useDailyNote(notePath: string | null) {
     [applyTaskMutation]
   );
 
+  const editTaskAtIdx = useCallback(
+    async (taskIdx: number, newText: string, start: string | null, end: string | null) => {
+      await applyTaskMutation(taskIdx, (raw, lineIndex) => {
+        const withText = updateTaskText(raw, lineIndex, newText);
+        return setTaskTimeBlock(withText, lineIndex, start, end);
+      });
+    },
+    [applyTaskMutation]
+  );
+
   return {
     ...state,
     tasks,
     toggleTask: toggleTaskAtIdx,
     updateTaskText: updateTaskTextAtIdx,
     setTaskTimeBlock: setTaskTimeBlockAtIdx,
+    editTask: editTaskAtIdx,
     reload: loadNote,
   };
 }

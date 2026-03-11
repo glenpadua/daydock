@@ -42,8 +42,7 @@ export default function App() {
     error,
     notFound,
     toggleTask,
-    updateTaskText,
-    setTaskTimeBlock,
+    editTask,
   } = useDailyNote(notePath);
 
   // Pomodoro — lifted here so break reminders can observe state
@@ -84,9 +83,6 @@ export default function App() {
 
       <ActiveTaskZone
         tasks={tasks}
-        onToggleTask={toggleTask}
-        onUpdateTaskText={updateTaskText}
-        onSetTaskTimeBlock={setTaskTimeBlock}
       />
 
       {/* Timer zone */}
@@ -124,7 +120,9 @@ export default function App() {
           <NoteRenderer
             preamble={preamble}
             sections={sections}
+            tasks={tasks}
             onToggleTask={toggleTask}
+            onEditTask={editTask}
             vaultName={settings.vaultPath?.split("/").filter(Boolean).pop()}
             vaultPath={settings.vaultPath}
             notePath={notePath}

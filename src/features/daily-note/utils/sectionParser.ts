@@ -10,14 +10,24 @@ export interface ParsedNote {
   sections: NoteSection[];
 }
 
+function splitFrontmatter(markdown: string): { prefix: string; body: string } {
+  const match = markdown.match(/^---\n[\s\S]*?\n---\n/);
+  if (!match) return { prefix: "", body: markdown };
+
+  return {
+    prefix: match[0],
+    body: markdown.slice(match[0].length),
+  };
+}
+
 export function parseNoteSections(markdown: string): ParsedNote {
   const frontmatter: Record<string, string> = {};
-  let body = markdown;
+  const { prefix, body: initialBody } = splitFrontmatter(markdown);
+  let body = initialBody;
 
   // Strip YAML frontmatter and parse key: value pairs
-  const fmMatch = markdown.match(/^---\n([\s\S]*?)\n---\n/);
+  const fmMatch = prefix.match(/^---\n([\s\S]*?)\n---\n$/);
   if (fmMatch) {
-    body = markdown.slice(fmMatch[0].length);
     for (const line of fmMatch[1].split("\n")) {
       const colonIdx = line.indexOf(":");
       if (colonIdx > 0) {
@@ -62,4 +72,35 @@ export function parseNoteSections(markdown: string): ParsedNote {
     preamble: preambleLines.join("\n").trim(),
     sections,
   };
+}
+
+export function replaceSectionContent(
+  markdown: string,
+  sectionIndex: number,
+  newContent: string
+): string {
+  const { prefix, body } = splitFrontmatter(markdown);
+  const lines = body.split("\n");
+  const headingIndices: number[] = [];
+
+  for (let idx = 0; idx < lines.length; idx += 1) {
+    if (/^(#{1,6})\s+(.+)/.test(lines[idx])) {
+      headingIndices.push(idx);
+    }
+  }
+
+  const headingIndex = headingIndices[sectionIndex];
+  if (headingIndex === undefined) return markdown;
+
+  const contentStart = headingIndex + 1;
+  const contentEnd = headingIndices[sectionIndex + 1] ?? lines.length;
+  const normalizedContent = newContent.replace(/\r\n/g, "\n").replace(/\n+$/, "");
+  const replacementLines = normalizedContent ? normalizedContent.split("\n") : [];
+  const nextLines = [
+    ...lines.slice(0, contentStart),
+    ...replacementLines,
+    ...lines.slice(contentEnd),
+  ];
+
+  return `${prefix}${nextLines.join("\n")}`;
 }

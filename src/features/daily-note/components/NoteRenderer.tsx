@@ -1,36 +1,24 @@
-import { useEffect, useRef, useState } from "react";
-import { CaretDown } from "@phosphor-icons/react";
+import { useState } from "react";
+import { CaretDown, PencilSimple } from "@phosphor-icons/react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { NoteSection } from "../utils/sectionParser";
 import { parseMarkdown } from "../utils/markdownParser";
-import type { Task } from "../../active-task/utils/taskParser";
 import styles from "./NoteRenderer.module.css";
 
 interface Props {
   preamble: string;
   sections: NoteSection[];
-  tasks: Task[];
   onToggleTask: (taskIdx: number) => void;
-  onEditTask: (
-    taskIdx: number,
-    newText: string,
-    start: string | null,
-    end: string | null
-  ) => void | Promise<void>;
+  onEditSection: (sectionIdx: number, newContent: string) => void | Promise<void>;
   vaultName?: string;
   vaultPath?: string;
   notePath?: string | null;
 }
 
-interface TaskEditorState {
-  taskIdx: number;
-  draftText: string;
-  start: string;
-  end: string;
-  top: number;
-  left: number;
-  width: number;
-  minHeight: number;
+interface SectionEditorState {
+  sectionIdx: number;
+  title: string;
+  content: string;
 }
 
 const URL_SCHEME_PATTERN = /^[a-zA-Z][a-zA-Z\d+.-]*:/;
@@ -102,191 +90,116 @@ function isExternalUrl(href: string): boolean {
 export function NoteRenderer({
   preamble,
   sections,
-  tasks,
   onToggleTask,
-  onEditTask,
+  onEditSection,
   vaultName,
   vaultPath,
   notePath,
 }: Props) {
-  const [editor, setEditor] = useState<TaskEditorState | null>(null);
-  const editorRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [editor, setEditor] = useState<SectionEditorState | null>(null);
 
-  useEffect(() => {
-    if (!editor) return;
-
-    function handleOutsideClick(event: MouseEvent) {
-      if (editorRef.current?.contains(event.target as Node)) return;
-      setEditor(null);
-    }
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
-  }, [editor]);
-
-  useEffect(() => {
-    if (!editor) return;
-    const task = tasks[editor.taskIdx];
-    if (!task || task.checked) {
-      setEditor(null);
-    }
-  }, [editor, tasks]);
-
-  useEffect(() => {
-    if (!editor || !textareaRef.current) return;
-    const textarea = textareaRef.current;
-    textarea.style.height = "auto";
-    textarea.style.height = `${Math.max(editor.minHeight, textarea.scrollHeight)}px`;
-  }, [editor]);
-
-  function openTaskEditor(taskIdx: number, anchorRect: DOMRect) {
-    const task = tasks[taskIdx];
-    if (!task || task.checked) return;
-
-    setEditor({
-      taskIdx,
-      draftText: task.taskText,
-      start: task.timeBlock?.start ?? "",
-      end: task.timeBlock?.end ?? "",
-      top: anchorRect.top,
-      left: anchorRect.left,
-      width: anchorRect.width,
-      minHeight: Math.max(anchorRect.height, 72),
-    });
-  }
-
-  function updateEditor(partial: Partial<TaskEditorState>) {
-    setEditor((current) => (current ? { ...current, ...partial } : current));
-  }
-
-  async function saveTaskEditor() {
-    if (!editor) return;
-    const newText = editor.draftText.trim();
-    const start = editor.start.trim();
-    const end = editor.end.trim();
-    const hasPartialTime = Boolean((start && !end) || (!start && end));
-    if (hasPartialTime) return;
-
-    await onEditTask(editor.taskIdx, newText, start || null, end || null);
-    setEditor(null);
-  }
-
-  // Render preamble first, track its task count so section indices are correct
   const preambleResult = preamble ? parseMarkdown(preamble, 0) : null;
   let cumulativeTaskIdx = preambleResult?.taskCount ?? 0;
   const hasAnyContent = Boolean((preamble ?? "").trim()) || sections.some(
     (section) => section.title.trim() || section.content.trim()
   );
 
+  async function saveSectionEditor() {
+    if (!editor) return;
+    await onEditSection(editor.sectionIdx, editor.content);
+    setEditor(null);
+  }
+
   return (
     <div className={styles.note}>
       {!hasAnyContent && (
         <p className={styles.emptyNote}>Today&apos;s note is empty.</p>
       )}
+
+      {editor && (
+        <div className={styles.sectionEditor}>
+          <div className={styles.sectionEditorHeader}>
+            <div>
+              <p className={styles.sectionEditorLabel}>Editing section</p>
+              <h3 className={styles.sectionEditorTitle}>{editor.title}</h3>
+            </div>
+            <button
+              className={styles.sectionEditorClose}
+              onClick={() => setEditor(null)}
+            >
+              Close
+            </button>
+          </div>
+
+          <textarea
+            className={styles.sectionEditorTextarea}
+            value={editor.content}
+            onChange={(e) => {
+              setEditor((current) => (
+                current ? { ...current, content: e.target.value } : current
+              ));
+            }}
+            spellCheck={false}
+            autoFocus
+          />
+
+          <div className={styles.sectionEditorActions}>
+            <button
+              className={styles.sectionEditorSecondary}
+              onClick={() => setEditor(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className={styles.sectionEditorPrimary}
+              onClick={() => {
+                void saveSectionEditor();
+              }}
+            >
+              Save section
+            </button>
+          </div>
+        </div>
+      )}
+
       {preambleResult && (
         <ContentBlock
           html={preambleResult.html}
           onToggleTask={onToggleTask}
-          onRequestEditTask={openTaskEditor}
           vaultName={vaultName}
           vaultPath={vaultPath}
           notePath={notePath}
         />
       )}
-      {sections.map((section, i) => {
+
+      {sections.map((section, sectionIdx) => {
         const startIdx = cumulativeTaskIdx;
         const result = parseMarkdown(section.content, startIdx);
         cumulativeTaskIdx += result.taskCount;
 
         return (
           <SectionBlock
-            key={`${section.title}-${i}`}
+            key={`${section.title}-${sectionIdx}`}
             section={section}
+            sectionIdx={sectionIdx}
             html={result.html}
             onToggleTask={onToggleTask}
-            onRequestEditTask={openTaskEditor}
+            onEditSection={(idx) => {
+              const target = sections[idx];
+              if (!target) return;
+
+              setEditor({
+                sectionIdx: idx,
+                title: target.title,
+                content: target.content,
+              });
+            }}
             vaultName={vaultName}
             vaultPath={vaultPath}
             notePath={notePath}
           />
         );
       })}
-
-      {editor && (
-        <div
-          ref={editorRef}
-          className={styles.taskEditor}
-          style={{ top: editor.top, left: editor.left, width: editor.width }}
-        >
-          <textarea
-            ref={textareaRef}
-            className={styles.editorTextarea}
-            value={editor.draftText}
-            onChange={(e) => updateEditor({ draftText: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                e.preventDefault();
-                setEditor(null);
-              }
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                void saveTaskEditor();
-              }
-            }}
-            spellCheck={false}
-            autoFocus
-          />
-
-          <div className={styles.timeRow}>
-            <label className={styles.timeField}>
-              Start
-              <input
-                type="time"
-                value={editor.start}
-                onChange={(e) => updateEditor({ start: e.target.value })}
-              />
-            </label>
-            <label className={styles.timeField}>
-              End
-              <input
-                type="time"
-                value={editor.end}
-                onChange={(e) => updateEditor({ end: e.target.value })}
-              />
-            </label>
-          </div>
-
-          <div className={styles.editorActions}>
-            <button
-              className={styles.editorAction}
-              onClick={() => {
-                updateEditor({ start: "", end: "" });
-              }}
-            >
-              Clear time
-            </button>
-            <button
-              className={styles.editorAction}
-              onClick={() => setEditor(null)}
-            >
-              Cancel
-            </button>
-            <button
-              className={styles.editorActionPrimary}
-              onClick={() => {
-                void saveTaskEditor();
-              }}
-              disabled={Boolean(
-                (editor.start.trim() && !editor.end.trim()) ||
-                (!editor.start.trim() && editor.end.trim())
-              )}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -294,14 +207,12 @@ export function NoteRenderer({
 function ContentBlock({
   html,
   onToggleTask,
-  onRequestEditTask,
   vaultName,
   vaultPath,
   notePath,
 }: {
   html: string;
   onToggleTask: (idx: number) => void;
-  onRequestEditTask: (taskIdx: number, anchorRect: DOMRect) => void;
   vaultName?: string;
   vaultPath?: string;
   notePath?: string | null;
@@ -339,7 +250,6 @@ function ContentBlock({
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     const target = e.target as HTMLElement;
 
-    // Checkbox toggle
     if (target.matches('input[type="checkbox"]')) {
       e.preventDefault();
       const raw = target.getAttribute("data-task-index");
@@ -348,25 +258,10 @@ function ContentBlock({
     }
 
     const link = target.closest("[data-link-kind]") as HTMLElement | null;
-    if (link) {
-      e.preventDefault();
-      handleLinkActivation(link);
-      return;
-    }
-
-    const taskListItem = target.closest("li");
-    if (!taskListItem) return;
-
-    const taskInput = taskListItem.querySelector(
-      'input[type="checkbox"][data-task-index]'
-    ) as HTMLInputElement | null;
-    if (!taskInput) return;
-
-    const raw = taskInput.getAttribute("data-task-index");
-    if (raw === null) return;
+    if (!link) return;
 
     e.preventDefault();
-    onRequestEditTask(Number(raw), taskListItem.getBoundingClientRect());
+    handleLinkActivation(link);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -392,17 +287,19 @@ function ContentBlock({
 
 function SectionBlock({
   section,
+  sectionIdx,
   html,
   onToggleTask,
-  onRequestEditTask,
+  onEditSection,
   vaultName,
   vaultPath,
   notePath,
 }: {
   section: NoteSection;
+  sectionIdx: number;
   html: string;
   onToggleTask: (idx: number) => void;
-  onRequestEditTask: (taskIdx: number, anchorRect: DOMRect) => void;
+  onEditSection: (sectionIdx: number) => void;
   vaultName?: string;
   vaultPath?: string;
   notePath?: string | null;
@@ -419,22 +316,34 @@ function SectionBlock({
 
   return (
     <div className={styles.section} data-level={section.level}>
-      <button
-        className={styles.heading}
-        onClick={() => setCollapsed((c) => !c)}
-        aria-expanded={!collapsed}
-      >
-        <HeadingTag className={styles.headingText}>{section.title}</HeadingTag>
-        <CaretDown
-          size={12}
-          className={`${styles.chevron} ${collapsed ? styles.collapsed : ""}`}
-        />
-      </button>
+      <div className={styles.sectionHeader}>
+        <button
+          className={styles.heading}
+          onClick={() => setCollapsed((current) => !current)}
+          aria-expanded={!collapsed}
+        >
+          <HeadingTag className={styles.headingText}>{section.title}</HeadingTag>
+          <CaretDown
+            size={12}
+            className={`${styles.chevron} ${collapsed ? styles.collapsed : ""}`}
+          />
+        </button>
+
+        <button
+          className={styles.editButton}
+          onClick={() => onEditSection(sectionIdx)}
+          aria-label={`Edit ${section.title}`}
+          title={`Edit ${section.title}`}
+        >
+          <PencilSimple size={12} />
+          Edit
+        </button>
+      </div>
+
       {!collapsed && section.content && (
         <ContentBlock
           html={html}
           onToggleTask={onToggleTask}
-          onRequestEditTask={onRequestEditTask}
           vaultName={vaultName}
           vaultPath={vaultPath}
           notePath={notePath}

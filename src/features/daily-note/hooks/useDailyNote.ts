@@ -1,12 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { parseNoteSections, type ParsedNote } from "../utils/sectionParser";
+import {
+  parseNoteSections,
+  replaceSectionContent,
+  type ParsedNote,
+} from "../utils/sectionParser";
 import {
   parseTasks,
-  setTaskTimeBlock,
   toggleTask,
-  updateTaskText,
   type Task,
 } from "../../active-task/utils/taskParser";
 
@@ -76,13 +78,12 @@ export function useDailyNote(notePath: string | null) {
 
   const tasks: Task[] = useMemo(() => parseTasks(state.raw), [state.raw]);
 
-  const applyTaskMutation = useCallback(
-    async (taskIdx: number, mutateRaw: (raw: string, lineIndex: number) => string) => {
+  const applyRawMutation = useCallback(
+    async (mutateRaw: (raw: string) => string) => {
       const path = notePathRef.current;
-      const task = tasks[taskIdx];
-      if (!path || !task) return;
+      if (!path) return;
 
-      const newRaw = mutateRaw(state.raw, task.lineIndex);
+      const newRaw = mutateRaw(state.raw);
       if (newRaw === state.raw) return;
 
       // Optimistic update — instant visual feedback
@@ -97,7 +98,17 @@ export function useDailyNote(notePath: string | null) {
         loadNote(); // roll back to on-disk state
       }
     },
-    [tasks, state.raw, loadNote]
+    [state.raw, loadNote]
+  );
+
+  const applyTaskMutation = useCallback(
+    async (taskIdx: number, mutateRaw: (raw: string, lineIndex: number) => string) => {
+      const task = tasks[taskIdx];
+      if (!task) return;
+
+      await applyRawMutation((raw) => mutateRaw(raw, task.lineIndex));
+    },
+    [tasks, applyRawMutation]
   );
 
   const toggleTaskAtIdx = useCallback(
@@ -107,41 +118,18 @@ export function useDailyNote(notePath: string | null) {
     [applyTaskMutation]
   );
 
-  const updateTaskTextAtIdx = useCallback(
-    async (taskIdx: number, newText: string) => {
-      await applyTaskMutation(taskIdx, (raw, lineIndex) =>
-        updateTaskText(raw, lineIndex, newText)
-      );
+  const updateSectionAtIdx = useCallback(
+    async (sectionIdx: number, newContent: string) => {
+      await applyRawMutation((raw) => replaceSectionContent(raw, sectionIdx, newContent));
     },
-    [applyTaskMutation]
-  );
-
-  const setTaskTimeBlockAtIdx = useCallback(
-    async (taskIdx: number, start: string | null, end: string | null) => {
-      await applyTaskMutation(taskIdx, (raw, lineIndex) =>
-        setTaskTimeBlock(raw, lineIndex, start, end)
-      );
-    },
-    [applyTaskMutation]
-  );
-
-  const editTaskAtIdx = useCallback(
-    async (taskIdx: number, newText: string, start: string | null, end: string | null) => {
-      await applyTaskMutation(taskIdx, (raw, lineIndex) => {
-        const withText = updateTaskText(raw, lineIndex, newText);
-        return setTaskTimeBlock(withText, lineIndex, start, end);
-      });
-    },
-    [applyTaskMutation]
+    [applyRawMutation]
   );
 
   return {
     ...state,
     tasks,
     toggleTask: toggleTaskAtIdx,
-    updateTaskText: updateTaskTextAtIdx,
-    setTaskTimeBlock: setTaskTimeBlockAtIdx,
-    editTask: editTaskAtIdx,
+    updateSection: updateSectionAtIdx,
     reload: loadNote,
   };
 }

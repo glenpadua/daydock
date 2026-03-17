@@ -26,11 +26,17 @@
   border-bottom: none;
 }
 
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
+  flex: 1;
   padding: var(--space-2) 0;
   background: none;
   border: none;
@@ -64,6 +70,25 @@
 
 .chevron.collapsed {
   transform: rotate(-90deg);
+}
+
+.editButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-solid) 86%, white);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.editButton:hover {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  color: var(--text-primary);
 }
 
 /* ── Section content ── */
@@ -158,90 +183,118 @@
   font-style: italic;
 }
 
-.taskEditor {
-  position: fixed;
-  z-index: 80;
+.sectionEditor {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   background: var(--bg-solid);
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
-  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  padding: var(--space-2);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
   display: flex;
   flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionEditorHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: var(--space-2);
 }
 
-.editorTextarea {
-  width: 100%;
-  resize: none;
+.sectionEditorLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 2px;
+}
+
+.sectionEditorTitle {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.sectionEditorClose {
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 5px 8px;
+  line-height: 1;
+}
+
+.sectionEditorTextarea {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   background: var(--bg-card);
   color: var(--text-primary);
-  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 12px;
   line-height: 1.5;
   padding: var(--space-2) var(--space-3);
   outline: none;
   user-select: text;
 }
 
-.editorTextarea:focus {
+.sectionEditorTextarea:focus {
   border-color: var(--accent);
 }
 
-.timeRow {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.timeField {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-}
-
-.timeField input {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  padding: 4px 6px;
-  font-size: 11px;
-  font-family: var(--font-mono);
-}
-
-.editorActions {
+.sectionEditorActions {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-1);
 }
 
-.editorAction,
-.editorActionPrimary {
+.sectionEditorSecondary,
+.sectionEditorPrimary {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   font-size: 11px;
-  padding: 5px 8px;
+  padding: 7px 10px;
   line-height: 1;
 }
 
-.editorAction {
+.sectionEditorSecondary {
   background: var(--bg-card);
   color: var(--text-secondary);
 }
 
-.editorActionPrimary {
+.sectionEditorPrimary {
   background: var(--accent);
   color: white;
   border-color: var(--accent);
 }
 
-.editorActionPrimary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+@media (max-width: 420px) {
+  .sectionHeader {
+    align-items: flex-start;
+  }
+
+  .editButton {
+    margin-top: var(--space-1);
+  }
+
+  .sectionEditorHeader {
+    flex-direction: column;
+  }
+
+  .sectionEditorActions {
+    justify-content: stretch;
+  }
+
+  .sectionEditorSecondary,
+  .sectionEditorPrimary {
+    flex: 1;
+  }
 }

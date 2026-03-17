@@ -1,15 +1,24 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalSize } from "@tauri-apps/api/dpi";
-import { GearSix, X } from "@phosphor-icons/react";
+import { CaretLeft, CaretRight, GearSix, X } from "@phosphor-icons/react";
 import styles from "./Header.module.css";
 
-function formatDate(): string {
-  return new Date().toLocaleDateString("en-US", {
+function formatDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
+}
+
+function toInputValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function fromInputValue(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
 }
 
 type SizePreset = "compact" | "small" | "medium";
@@ -22,10 +31,23 @@ const SIZE_MAP: Record<SizePreset, number> = {
 
 interface HeaderProps {
   onOpenSettings: () => void;
+  selectedDate: Date;
+  isToday: boolean;
+  onPrevDay: () => void;
+  onNextDay: () => void;
+  onSelectDate: (date: Date) => void;
 }
 
-export default function Header({ onOpenSettings }: HeaderProps) {
+export default function Header({
+  onOpenSettings,
+  selectedDate,
+  isToday,
+  onPrevDay,
+  onNextDay,
+  onSelectDate,
+}: HeaderProps) {
   const [activeSize, setActiveSize] = useState<SizePreset>("medium");
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleClose = () => getCurrentWindow().close();
 
@@ -36,7 +58,48 @@ export default function Header({ onOpenSettings }: HeaderProps) {
 
   return (
     <header className={styles.header} data-tauri-drag-region>
-      <span className={styles.date}>{formatDate()}</span>
+      <div className={styles.dateNav}>
+        <button className={styles.navBtn} onClick={onPrevDay} aria-label="Previous day">
+          <CaretLeft size={12} weight="bold" />
+        </button>
+
+        <button
+          className={`${styles.dateBtn} ${!isToday ? styles.dateBtnPast : ""}`}
+          onClick={() => {
+            const input = dateInputRef.current;
+            if (!input) return;
+
+            input.showPicker?.();
+            input.focus();
+            input.click();
+          }}
+        >
+          {formatDate(selectedDate)}
+        </button>
+
+        <input
+          ref={dateInputRef}
+          type="date"
+          className={styles.hiddenDateInput}
+          value={toInputValue(selectedDate)}
+          max={toInputValue(new Date())}
+          onChange={(e) => {
+            if (e.target.value) onSelectDate(fromInputValue(e.target.value));
+          }}
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+
+        <button
+          className={styles.navBtn}
+          onClick={onNextDay}
+          disabled={isToday}
+          aria-label="Next day"
+        >
+          <CaretRight size={12} weight="bold" />
+        </button>
+      </div>
+
       <div className={styles.controls}>
         <div className={styles.sizePresets}>
           <button

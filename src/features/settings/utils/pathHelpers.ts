@@ -1,12 +1,12 @@
 export function getDailyNotePath(
   vaultPath: string,
   dailyNotesFolder: string,
-  filenameFormat: string
+  filenameFormat: string,
+  date: Date = new Date()
 ): string {
-  const now = new Date();
-  const yyyy = String(now.getFullYear());
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
+  const yyyy = String(date.getFullYear());
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
 
   const filename = filenameFormat
     .replace("YYYY", yyyy)

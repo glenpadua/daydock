@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import Header from "./shared/components/Header";
 import { useSettings } from "./features/settings/hooks/useSettings";
@@ -19,6 +19,44 @@ import styles from "./App.module.css";
 export default function App() {
   const { settings, updateSetting, ready } = useSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+
+  const isToday = useMemo(() => {
+    const today = new Date();
+    return (
+      selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate()
+    );
+  }, [selectedDate]);
+
+  const goToPrevDay = useCallback(() => {
+    setSelectedDate((current) => {
+      const previous = new Date(current);
+      previous.setDate(previous.getDate() - 1);
+      return previous;
+    });
+  }, []);
+
+  const goToNextDay = useCallback(() => {
+    if (isToday) return;
+    setSelectedDate((current) => {
+      const next = new Date(current);
+      next.setDate(next.getDate() + 1);
+      return next;
+    });
+  }, [isToday]);
+
+  const goToDate = useCallback((date: Date) => {
+    const today = new Date();
+    const clampedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (date > clampedToday) {
+      setSelectedDate(clampedToday);
+      return;
+    }
+
+    setSelectedDate(new Date(date.getFullYear(), date.getMonth(), date.getDate()));
+  }, []);
 
   useEffect(() => {
     getCurrentWindow().setVisibleOnAllWorkspaces(true);
@@ -29,9 +67,16 @@ export default function App() {
     return getDailyNotePath(
       settings.vaultPath,
       settings.dailyNotesFolder,
-      settings.filenameFormat
+      settings.filenameFormat,
+      selectedDate
     );
-  }, [ready, settings.vaultPath, settings.dailyNotesFolder, settings.filenameFormat]);
+  }, [
+    ready,
+    settings.vaultPath,
+    settings.dailyNotesFolder,
+    settings.filenameFormat,
+    selectedDate,
+  ]);
 
   useFileWatcher(notePath);
   const {
@@ -79,7 +124,14 @@ export default function App() {
         />
       )}
 
-      <Header onOpenSettings={() => setDrawerOpen(true)} />
+      <Header
+        onOpenSettings={() => setDrawerOpen(true)}
+        selectedDate={selectedDate}
+        isToday={isToday}
+        onPrevDay={goToPrevDay}
+        onNextDay={goToNextDay}
+        onSelectDate={goToDate}
+      />
 
       <ActiveTaskZone
         tasks={tasks}
@@ -111,8 +163,10 @@ export default function App() {
           <p className={styles.placeholder}>Loading…</p>
         ) : notFound ? (
           <div>
-            <p className={styles.placeholder}>No note for today yet.</p>
-            <p className={styles.placeholderSub}>{notePath}</p>
+            <p className={styles.placeholder}>
+              {isToday ? "No note for today yet." : "No note for this day."}
+            </p>
+            {isToday && <p className={styles.placeholderSub}>{notePath}</p>}
           </div>
         ) : error ? (
           <p className={styles.placeholder}>{error}</p>
